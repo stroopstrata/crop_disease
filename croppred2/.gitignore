@@ -1,0 +1,19 @@
+# Python / Flask / ML related
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+
+# VS Code
+.vscode/
+
+# OS junk files
+.DS_Store
+Thumbs.db
+
+# Environment config
+.env

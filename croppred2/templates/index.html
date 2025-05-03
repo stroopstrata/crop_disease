@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Disease Prediction</title>
+    <style>
+        /* Set the background image for the page */
+        body {
+            background-image: url('{{ url_for('static', filename='background4.jpg') }}'); /* Flask will serve this image */
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            height: 100vh; /* Makes sure the body takes up the full viewport height */
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Style for the header */
+        h1 {
+            text-align: center;
+            color: black;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Style for buttons */
+        button {
+            
+            background-color: #4CAF50; /* Green background */
+            color: white;              /* White text */
+            padding: 10px 20px;        /* Padding */
+            border: none;              /* Remove border */
+            border-radius: 5px;        /* Rounded corners */
+            cursor: pointer;           /* Pointer cursor */
+            font-size: 16px;
+        }
+
+        /* Style buttons on hover */
+        button:hover {
+            background-color: #45a049; /* Darker green on hover */
+        }
+
+        /* Style the image preview and video */
+        img, video, canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Style input file */
+        input[type="file"] {
+            margin: 10px auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Crop Disease Prediction</h1>
+
+    <!-- Button to upload an image from the device -->
+    <input type="file" accept="image/*" id="imageInput">
+    <br><br>
+
+    <!-- Button to click a photo using the camera -->
+    <video id="video" width="300" height="300" autoplay style="display:none;"></video>
+    <canvas id="canvas" width="300" height="300" style="display:none;"></canvas>
+    <div style="text-align: center;">
+        <button id="cameraButton" onclick="startCamera()">Click Photo</button>
+    </div>    
+    <button id="captureButton" style="display:none;" onclick="captureImage()">Capture Image</button>
+    <br><br>
+
+    <!-- Image preview -->
+    <img id="imagePreview" width="300" height="300" style="display:none;">
+    <br><br>
+
+    <!-- Button to upload the image -->
+    <div style="text-align: center;">
+        <button id="uploadButton" style="display:none;" onclick="uploadImage()">Upload Image</button>
+    </div>
+    
+    <!-- Placeholder for prediction result -->
+    <div id="result"></div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const uploadButton = document.getElementById('uploadButton');
+        const resultDiv = document.getElementById('result');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureButton = document.getElementById('captureButton');
+        let capturedImage;
+
+        // Image input from file
+        imageInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+                uploadButton.style.display = 'inline-block';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Start camera stream
+        function startCamera() {
+            video.style.display = 'block';
+            captureButton.style.display = 'inline-block';
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    console.log("Error: " + err);
+                });
+        }
+
+        // Capture image from camera
+        function captureImage() {
+            const context = canvas.getContext('2d');
+            canvas.style.display = 'none';
+            video.style.display = 'none';
+            context.drawImage(video, 0, 0, 300, 300);
+            capturedImage = canvas.toDataURL('image/png');
+            imagePreview.src = capturedImage;
+            imagePreview.style.display = 'block';
+            uploadButton.style.display = 'inline-block';
+        }
+
+        // Upload image for prediction
+        function uploadImage() {
+            let file;
+            if (capturedImage) {
+                // If an image was captured from the camera
+                file = dataURLtoFile(capturedImage, 'captured.png');
+            } else if (imageInput.files.length > 0) {
+                // If an image was selected from file
+                file = imageInput.files[0];
+            } else {
+                alert('Please choose an image or capture one!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display the result
+                resultDiv.innerHTML = `<h3 style="text-align: center;">Prediction: ${data.prediction}</h3>`;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Convert base64 image data to file object
+        function dataURLtoFile(dataurl, filename) {
+            var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new File([u8arr], filename, {type:mime});
+        }
+    </script>
+</body>
+</html>
